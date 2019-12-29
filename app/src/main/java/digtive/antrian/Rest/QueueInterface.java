@@ -15,11 +15,11 @@ public interface QueueInterface {
 
     @FormUrlEncoded
     @POST("api/queue/antrian")
-    Call<QueueResponse> getQueueList(@Field("layanan_id") String services_id);
+    Call<QueueResponse> getQueueList(@Field("loket_id") String services_id);
     @FormUrlEncoded
     @POST("api/queue/call")
-    Call<QueueResponse> doCall(@Field("layanan_id") String services_id);
+    Call<QueueResponse> doCall(@Field("loket_id") String services_id);
     @FormUrlEncoded
     @POST("api/queue/recall")
-    Call<QueueResponse> doRecall(@Field("layanan_id") String services_id);
+    Call<QueueResponse> doRecall(@Field("loket_id") String services_id);
 }
