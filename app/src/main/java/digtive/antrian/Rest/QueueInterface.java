@@ -1,5 +1,6 @@
 package digtive.antrian.Rest;
 
+import digtive.antrian.Model.AntrianResponse;
 import digtive.antrian.Model.QueueResponse;
 import digtive.antrian.Model.Services;
 import digtive.antrian.Model.ServicesResponse;
@@ -22,4 +23,7 @@ public interface QueueInterface {
     @FormUrlEncoded
     @POST("api/queue/recall")
     Call<QueueResponse> doRecall(@Field("loket_id") String services_id);
+
+    @GET("Services/call/1")
+    Call<AntrianResponse> kambing();
 }

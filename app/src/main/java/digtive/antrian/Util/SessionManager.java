@@ -14,6 +14,7 @@ public class SessionManager {
     public static final String KEY_PENGGUNA_LOKET = "loket";
     public static final String LOGGIN_STATUS = "sudahlogin";
     public static final String SHARE_NAME = "logginsession";
+
     private Context context;
     private final int MODE_PRIVATE = 0;
 

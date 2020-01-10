@@ -1,40 +1,44 @@
 package digtive.antrian.Activity;
 
-import android.content.Context;
 import android.graphics.Point;
 import android.os.Handler;
 import android.support.constraint.ConstraintLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Display;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
-import android.widget.ImageView;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import java.util.HashMap;
-
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 import digtive.antrian.Model.QueueResponse;
 import digtive.antrian.R;
-import digtive.antrian.Rest.CombineApi;
 import digtive.antrian.Rest.QueueInterface;
 import digtive.antrian.Util.SessionManager;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
 
 public class MainActivity extends AppCompatActivity {
+    EditText etPegawai;
+    EditText etLoket;
+    EditText etDomain;
     @BindView(R.id.tvCurrent)
     TextView tvCurrent;
+    @BindView(R.id.tvSetting)
+    TextView tvSetting;
     @BindView(R.id.tvTotal)
     TextView tvTotal;
     @BindView(R.id.tvRest)
@@ -46,12 +50,12 @@ public class MainActivity extends AppCompatActivity {
     ConstraintLayout mainLayout;
     @BindView(R.id.alternativeLayout)
     LinearLayout alternativeLayout;
-    String id;
     HashMap<String,String> map;
     Handler handler;
-
     SessionManager sessionManager;
     int percobaan = 0;
+    private static Retrofit retrofit = null;
+    public static String BASE_URL= "";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -59,15 +63,23 @@ public class MainActivity extends AppCompatActivity {
         ButterKnife.bind(this);
         sessionManager = new SessionManager(MainActivity.this);
         map = sessionManager.getDetailsLoggin();
-        queueInterface = CombineApi.getApiService();
-
+        handler = new Handler();
         if (map.get(sessionManager.KEY_PENGGUNA_LOKET) != null){
-            String name = "poli gigi";
-            this.id = "1";
+            BASE_URL = map.get(sessionManager.KEY_PENGGUNA_DOMAIN);
+            if (retrofit == null) {
+                retrofit = new Retrofit.Builder()
+                        .baseUrl(BASE_URL+"/")
+                        .addConverterFactory(GsonConverterFactory.create())
+                        .build();
+            }
+            handler.postDelayed(m_Runnable,1000);
+            queueInterface = retrofit.create(QueueInterface.class);
+            String name = "Goli Gigi";
             tvServicesName.setText(name);
-            getData(id);
+            getData(map.get(sessionManager.KEY_PENGGUNA_LOKET));
             mainLayout.setVisibility(View.VISIBLE);
             alternativeLayout.setVisibility(View.GONE);
+
         }
         else{
             mainLayout.setVisibility(View.GONE);
@@ -75,6 +87,126 @@ public class MainActivity extends AppCompatActivity {
         }
 
 
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        handler.removeCallbacks(m_Runnable);
+    }
+
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+        handler.postDelayed(m_Runnable,1000);
+    }
+
+    @OnClick(R.id.btnCall)
+    protected void btnCall(View view) {
+        callData(map.get(sessionManager.KEY_PENGGUNA_LOKET));
+        Toast.makeText(this, "ini button call", Toast.LENGTH_SHORT).show();
+    }
+
+    private void callData(String id) {
+        Call<QueueResponse> data = queueInterface.doCall(id);
+        data.enqueue(new Callback<QueueResponse>() {
+            @Override
+            public void onResponse(Call<QueueResponse> call, Response<QueueResponse> response) {
+                if (response.body().getStatus() == 200){
+                    tvCurrent.setText(String.valueOf(response.body().getSekarang().getAntrianNomor()));
+                    tvRest.setText(String.valueOf(response.body().getSisa()));
+                    tvTotal.setText(String.valueOf(response.body().getTotal()));
+                    Toast.makeText(MainActivity.this, "Nomor Antrian "+tvCurrent.getText(), Toast.LENGTH_SHORT).show();
+                }
+                if (response.body().getStatus() ==403){
+                    Toast.makeText(MainActivity.this, ""+response.body().getMessage(), Toast.LENGTH_SHORT).show();
+                }
+                else{
+                    Toast.makeText(MainActivity.this, "Gagal Memuat Data", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<QueueResponse> call, Throwable t) {
+                Toast.makeText(MainActivity.this, "Tidak terhubung dengan jaringan", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    @OnClick(R.id.btnRecall)
+    protected void btnRecall(View view) {
+        recallData(map.get(sessionManager.KEY_PENGGUNA_LOKET));
+
+    }
+
+    private void recallData(String id) {
+        Call<QueueResponse> data = queueInterface.doRecall(id);
+        data.enqueue(new Callback<QueueResponse>() {
+            @Override
+            public void onResponse(Call<QueueResponse> call, Response<QueueResponse> response) {
+                if (response.body().getStatus() == 200){
+                    tvCurrent.setText(String.valueOf(response.body().getSekarang().getAntrianNomor()));
+                    tvRest.setText(String.valueOf(response.body().getSisa()));
+                    tvTotal.setText(String.valueOf(response.body().getTotal()));
+                    Toast.makeText(MainActivity.this, "Nomor Antrian "+tvCurrent.getText(), Toast.LENGTH_SHORT).show();
+                }
+                else{
+                    Toast.makeText(MainActivity.this, "Gagal Memuat Data", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<QueueResponse> call, Throwable t) {
+                Toast.makeText(MainActivity.this, "Tidak terhubung dengan jaringan", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+    @OnClick(R.id.btnSetting)
+    protected void btnSetting(View view){
+        getPopup(view);
+        mainLayout.setVisibility(View.VISIBLE);
+        alternativeLayout.setVisibility(View.GONE);
+    }
+    @OnClick(R.id.tvSetting)
+    protected void tvSetting(View view){
+        getPopup(view);
+    }
+
+    private void getPopup(View view) {
+
+        WindowManager wm = (WindowManager) MainActivity.this.getSystemService(MainActivity.this.WINDOW_SERVICE);
+        Display display = wm.getDefaultDisplay();
+        Point size = new Point();
+        display.getSize(size);
+        int width = size.x;
+        int height = size.y;
+        LayoutInflater inflater = (LayoutInflater)
+                MainActivity.this.getSystemService(LAYOUT_INFLATER_SERVICE);
+        final View popupView = inflater.inflate(R.layout.form_setting, null);
+        Button terapkan = (Button) popupView.findViewById(R.id.btnTerapkan);
+        etPegawai = (EditText) popupView.findViewById(R.id.etPegawai);
+        etDomain = (EditText) popupView.findViewById(R.id.etDomain);
+        etLoket = (EditText) popupView.findViewById(R.id.etLoket);
+        final PopupWindow popupWindow = new PopupWindow(popupView);
+        popupWindow.setWidth(width);
+        popupWindow.setAnimationStyle(android.R.style.Animation_Translucent);
+        popupWindow.setHeight(height-200);
+        popupWindow.setFocusable(true);
+        popupWindow.showAtLocation(view, Gravity.CENTER, 0, 0);
+        if (sessionManager.KEY_PENGGUNA_LOKET!=null){
+
+            etPegawai.setText(map.get(sessionManager.KEY_PENGGUNA_USERNAME));
+            etDomain.setText(map.get(sessionManager.KEY_PENGGUNA_DOMAIN));
+            etLoket.setText(map.get(sessionManager.KEY_PENGGUNA_LOKET));
+        }
+        terapkan.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                sessionManager.saveLogin("1",String.valueOf(etPegawai.getText()),String.valueOf(etDomain.getText()),String.valueOf(etLoket.getText()));
+
+                handler.postDelayed(m_Runnable,1000);
+            }
+        });
     }
 
     private void getData(String id) {
@@ -102,107 +234,13 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    @OnClick(R.id.btnCall)
-    protected void btnCall(View view) {
-        callData(id);
-        Toast.makeText(this, "ini button call", Toast.LENGTH_SHORT).show();
-    }
-
-    private void callData(String id) {
-        Call<QueueResponse> data = queueInterface.doCall(id);
-        data.enqueue(new Callback<QueueResponse>() {
-            @Override
-            public void onResponse(Call<QueueResponse> call, Response<QueueResponse> response) {
-                if (response.body().getStatus() == 200){
-                    tvCurrent.setText(String.valueOf(response.body().getSekarang().getAntrianNomor()));
-                    tvRest.setText(String.valueOf(response.body().getSisa()));
-                    tvTotal.setText(String.valueOf(response.body().getTotal()));
-                    Toast.makeText(MainActivity.this, "Nomor Antrian "+tvCurrent.getText(), Toast.LENGTH_SHORT).show();
-                }
-                if (response.body().getStatus() ==403){
-                    Toast.makeText(MainActivity.this, ""+response.body().getMessage(), Toast.LENGTH_SHORT).show();
-                }
-                else{
-                    Toast.makeText(MainActivity.this, "Gagal Memuat Data", Toast.LENGTH_SHORT).show();
-                }
-            }
-
-            @Override
-            public void onFailure(Call<QueueResponse> call, Throwable t) {
-
-            }
-        });
-    }
-
-    @OnClick(R.id.btnRecall)
-    protected void btnRecall(View view) {
-        recallData(id);
-
-    }
-
-    private void recallData(String id) {
-        Call<QueueResponse> data = queueInterface.doRecall(id);
-        data.enqueue(new Callback<QueueResponse>() {
-            @Override
-            public void onResponse(Call<QueueResponse> call, Response<QueueResponse> response) {
-                if (response.body().getStatus() == 200){
-                    tvCurrent.setText(String.valueOf(response.body().getSekarang().getAntrianNomor()));
-                    tvRest.setText(String.valueOf(response.body().getSisa()));
-                    tvTotal.setText(String.valueOf(response.body().getTotal()));
-                    Toast.makeText(MainActivity.this, "Nomor Antrian "+tvCurrent.getText(), Toast.LENGTH_SHORT).show();
-                }
-                else{
-                    Toast.makeText(MainActivity.this, "Gagal Memuat Data", Toast.LENGTH_SHORT).show();
-                }
-            }
-
-            @Override
-            public void onFailure(Call<QueueResponse> call, Throwable t) {
-
-            }
-        });
-    }
-    @OnClick(R.id.btnSetting)
-    protected void btnSetting(View view){
-
-        WindowManager wm = (WindowManager) MainActivity.this.getSystemService(MainActivity.this.WINDOW_SERVICE);
-        Display display = wm.getDefaultDisplay();
-        Point size = new Point();
-        display.getSize(size);
-        int width = size.x;
-        int height = size.y;
-        LayoutInflater inflater = (LayoutInflater)
-                MainActivity.this.getSystemService(LAYOUT_INFLATER_SERVICE);
-        final View popupView = inflater.inflate(R.layout.form_setting, null);
-        Button terapkan = (Button) popupView.findViewById(R.id.btnTerapkan);
-        final PopupWindow popupWindow = new PopupWindow(popupView);
-        popupWindow.setWidth(width);
-        popupWindow.setAnimationStyle(android.R.style.Animation_Translucent);
-//                popupWindow.setAnimationStyle(android.R.style.Animation_InputMethod); dari bawah
-//                popupWindow.setAnimationStyle(android.R.style.Animation_Toast); fadein,bounce
-//                popupWindow.setAnimationStyle(android.R.style.Animation_Dialog); fadein,fadeout
-//                popupWindow.setAnimationStyle(android.R.style.Animation_Translucent); dari samping kanan
-        popupWindow.setHeight(height-200);
-        popupWindow.setFocusable(true);
-        popupWindow.showAtLocation(view, Gravity.CENTER, 0, 0);
-        terapkan.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                handler = new Handler();
-                handler.postDelayed(m_Runnable,5000);
-            }
-        });
-
-
-    }
     private final Runnable m_Runnable = new Runnable()
     {
         public void run()
 
         {
-            percobaan +=1;
-            Toast.makeText(MainActivity.this,"Ke - "+percobaan,Toast.LENGTH_SHORT).show();
-            MainActivity.this.handler.postDelayed(m_Runnable, 5000);
+            recallData(map.get(sessionManager.KEY_PENGGUNA_LOKET));
+            MainActivity.this.handler.postDelayed(m_Runnable, 1000);
         }
 
     };

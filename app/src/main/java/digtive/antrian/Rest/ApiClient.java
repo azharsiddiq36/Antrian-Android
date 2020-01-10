@@ -1,5 +1,7 @@
 package digtive.antrian.Rest;
 
+import android.support.annotation.Nullable;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -15,6 +17,7 @@ public class ApiClient {
             Gson gson = new GsonBuilder()
                     .setLenient()
                     .create();
+
             retrofit = new Retrofit.Builder().baseUrl(BASE_URL)
                     .addConverterFactory(GsonConverterFactory.create(gson))
                     .build();
