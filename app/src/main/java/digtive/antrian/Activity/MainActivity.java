@@ -21,6 +21,7 @@ import java.util.HashMap;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import digtive.antrian.Model.AntrianResponse;
 import digtive.antrian.Model.QueueResponse;
 import digtive.antrian.R;
 import digtive.antrian.Rest.QueueInterface;
@@ -65,16 +66,17 @@ public class MainActivity extends AppCompatActivity {
         map = sessionManager.getDetailsLoggin();
         handler = new Handler();
         if (map.get(sessionManager.KEY_PENGGUNA_LOKET) != null){
-            BASE_URL = map.get(sessionManager.KEY_PENGGUNA_DOMAIN);
+            BASE_URL = "http://"+map.get(sessionManager.KEY_PENGGUNA_DOMAIN)+"/antrian/";
             if (retrofit == null) {
                 retrofit = new Retrofit.Builder()
-                        .baseUrl(BASE_URL+"/")
+                        .baseUrl(BASE_URL)
                         .addConverterFactory(GsonConverterFactory.create())
                         .build();
             }
             handler.postDelayed(m_Runnable,1000);
             queueInterface = retrofit.create(QueueInterface.class);
-            String name = "Goli Gigi";
+            //String name = map.get(sessionManager.KEY_PENGGUNA_LOKET);
+            String name = "Poli Teknik";
             tvServicesName.setText(name);
             getData(map.get(sessionManager.KEY_PENGGUNA_LOKET));
             mainLayout.setVisibility(View.VISIBLE);
@@ -85,8 +87,6 @@ public class MainActivity extends AppCompatActivity {
             mainLayout.setVisibility(View.GONE);
             alternativeLayout.setVisibility(View.VISIBLE);
         }
-
-
     }
 
     @Override
@@ -103,8 +103,29 @@ public class MainActivity extends AppCompatActivity {
 
     @OnClick(R.id.btnCall)
     protected void btnCall(View view) {
-        callData(map.get(sessionManager.KEY_PENGGUNA_LOKET));
-        Toast.makeText(this, "ini button call", Toast.LENGTH_SHORT).show();
+//        callData(map.get(sessionManager.KEY_PENGGUNA_LOKET));
+        restCall(map.get(sessionManager.KEY_PENGGUNA_LOKET));
+    }
+
+    private void restCall(String s) {
+        Call<AntrianResponse> data = queueInterface.restCall(s);
+        data.enqueue(new Callback<AntrianResponse>() {
+            @Override
+            public void onResponse(Call<AntrianResponse> call, Response<AntrianResponse> response) {
+                if (response.body().getStatus().equals("200")){
+                    Toast.makeText(MainActivity.this, "Memanggil Nomor Urut"+response.body().getData().getAntrianNomor(), Toast.LENGTH_SHORT).show();
+                }
+                else{
+                    Toast.makeText(MainActivity.this, "Antrian Habis", Toast.LENGTH_SHORT).show();
+                }
+
+            }
+
+            @Override
+            public void onFailure(Call<AntrianResponse> call, Throwable t) {
+                Log.d("Kambing", "onFailure: "+t.toString());
+            }
+        });
     }
 
     private void callData(String id) {
@@ -135,8 +156,7 @@ public class MainActivity extends AppCompatActivity {
 
     @OnClick(R.id.btnRecall)
     protected void btnRecall(View view) {
-        recallData(map.get(sessionManager.KEY_PENGGUNA_LOKET));
-
+        //recallData(map.get(sessionManager.KEY_PENGGUNA_LOKET));
     }
 
     private void recallData(String id) {
@@ -148,7 +168,6 @@ public class MainActivity extends AppCompatActivity {
                     tvCurrent.setText(String.valueOf(response.body().getSekarang().getAntrianNomor()));
                     tvRest.setText(String.valueOf(response.body().getSisa()));
                     tvTotal.setText(String.valueOf(response.body().getTotal()));
-                    Toast.makeText(MainActivity.this, "Nomor Antrian "+tvCurrent.getText(), Toast.LENGTH_SHORT).show();
                 }
                 else{
                     Toast.makeText(MainActivity.this, "Gagal Memuat Data", Toast.LENGTH_SHORT).show();
@@ -198,13 +217,14 @@ public class MainActivity extends AppCompatActivity {
             etPegawai.setText(map.get(sessionManager.KEY_PENGGUNA_USERNAME));
             etDomain.setText(map.get(sessionManager.KEY_PENGGUNA_DOMAIN));
             etLoket.setText(map.get(sessionManager.KEY_PENGGUNA_LOKET));
+
         }
         terapkan.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 sessionManager.saveLogin("1",String.valueOf(etPegawai.getText()),String.valueOf(etDomain.getText()),String.valueOf(etLoket.getText()));
-
-                handler.postDelayed(m_Runnable,1000);
+                Toast.makeText(MainActivity.this, "Berhasil Melakukan Konfigurasi Awal, Silahkan Restart Aplikasi", Toast.LENGTH_SHORT).show();
+//                handler.postDelayed(m_Runnable,1000);
             }
         });
     }
@@ -214,16 +234,11 @@ public class MainActivity extends AppCompatActivity {
         data.enqueue(new Callback<QueueResponse>() {
             @Override
             public void onResponse(Call<QueueResponse> call, Response<QueueResponse> response) {
-                if (response.body().getStatus() == 200 && response.body().getSekarang() != null){
+                if (response.body().getStatus() == 200){
                     tvCurrent.setText(String.valueOf(response.body().getSekarang().getAntrianNomor()));
                     tvRest.setText(String.valueOf(response.body().getSisa()));
                     tvTotal.setText(String.valueOf(response.body().getTotal()));
-                }
-                else if (response.body().getStatus() == 200 && response.body().getSekarang() == null){
-                    Toast.makeText(MainActivity.this, "Antrian Belum Tersedia", Toast.LENGTH_SHORT).show();
-                }
-                else{
-                    Toast.makeText(MainActivity.this, "Gagal Memuat Data", Toast.LENGTH_SHORT).show();
+                    tvSetting.setText("Selamat Datang "+map.get(sessionManager.KEY_PENGGUNA_USERNAME));
                 }
             }
 
@@ -239,7 +254,7 @@ public class MainActivity extends AppCompatActivity {
         public void run()
 
         {
-            recallData(map.get(sessionManager.KEY_PENGGUNA_LOKET));
+            getData(map.get(sessionManager.KEY_PENGGUNA_LOKET));
             MainActivity.this.handler.postDelayed(m_Runnable, 1000);
         }
 

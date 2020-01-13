@@ -1,5 +1,6 @@
 package digtive.antrian.Rest;
 
+
 import digtive.antrian.Model.AntrianResponse;
 import digtive.antrian.Model.QueueResponse;
 import digtive.antrian.Model.Services;
@@ -8,7 +9,10 @@ import retrofit2.Call;
 import retrofit2.http.Field;
 import retrofit2.http.FormUrlEncoded;
 import retrofit2.http.GET;
+import retrofit2.http.Multipart;
 import retrofit2.http.POST;
+import retrofit2.http.Part;
+import retrofit2.http.Path;
 
 public interface QueueInterface {
     @GET("api/queue/layanan")
@@ -24,6 +28,7 @@ public interface QueueInterface {
     @POST("api/queue/recall")
     Call<QueueResponse> doRecall(@Field("loket_id") String services_id);
 
-    @GET("Services/call/1")
-    Call<AntrianResponse> kambing();
+    @GET("Services/call/{loket}")
+    Call<AntrianResponse> restCall(@Path("loket") String loket);
+
 }
